@@ -2,7 +2,6 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const PptxGenJS = require('pptxgenjs');
 const path = require('path');
-const moment = require('moment-timezone');  // Import moment-timezone
 
 // Setup app and middleware
 const app = express();
@@ -15,11 +14,24 @@ const bg2Path = './assets/bg2.png'; // Background for content slides and also co
 
 // Track the number of PowerPoints generated today
 let pptxGeneratedToday = 0;
-const currentDate = moment().tz('America/New_York').format('YYYY-MM-DD'); // Get the current date in ET
+
+// Function to get current time in Eastern Time (ET) without additional libraries
+const getCurrentTimeET = () => {
+  const options = { 
+    timeZone: 'America/New_York', 
+    year: 'numeric', 
+    month: '2-digit', 
+    day: '2-digit', 
+    hour: '2-digit', 
+    minute: '2-digit', 
+    second: '2-digit' 
+  };
+  return new Intl.DateTimeFormat('en-US', options).format(new Date());
+};
 
 // Serve the home page with the form
 app.get('/', (req, res) => {
-  const currentTimeET = moment().tz('America/New_York').format('YYYY-MM-DD HH:mm:ss'); // Get current time in ET
+  const currentTimeET = getCurrentTimeET(); // Get current time in ET
 
   res.send(`
     <html>
