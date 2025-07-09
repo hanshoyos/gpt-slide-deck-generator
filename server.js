@@ -1,41 +1,48 @@
-const express = require('express');
-const bodyParser = require('body-parser');
-const PptxGenJS = require('pptxgenjs');
-const path = require('path');
+const express = require("express");
+const bodyParser = require("body-parser");
+const pptxgenjs = require("pptxgenjs");
+const fs = require("fs");
+const path = require("path");
 
-// Setup app and middleware
 const app = express();
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: false }));
+const port = process.env.PORT || 3000;
 
-// Serve static files (like CSS, images)
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(bodyParser.json({ limit: "5mb" }));
+app.use(express.static(path.join(__dirname, "public")));
 
-// Path to assets (backgrounds)
-const bg1Path = './assets/bg1.png'; // Background for title slide
-const bg2Path = './assets/bg2.png'; // Background for content slides
+const bg1 = fs.readFileSync(path.join(__dirname, "assets/bg1.png"));
+const bg2 = fs.readFileSync(path.join(__dirname, "assets/bg2.png"));
 
-// Track the number of PowerPoints generated today
 let pptxGeneratedToday = 0;
 
-// Function to get current time in Eastern Time (ET) without additional libraries
-const getCurrentTimeET = () => {
-  const options = { 
-    timeZone: 'America/New_York', 
-    year: 'numeric', 
-    month: '2-digit', 
-    day: '2-digit', 
-    hour: '2-digit', 
-    minute: '2-digit', 
-    second: '2-digit' 
+function parseSlides(scriptText) {
+  const slideRegex = /Slide \d+:\s*(.+?)(?=Slide \d+:|$)/gs;
+  const matches = [...scriptText.matchAll(slideRegex)];
+
+  return matches.map((match) => {
+    const slideText = match[1].trim();
+    const lines = slideText.split(/\r?\n/).filter(Boolean);
+    const title = lines.shift() || "Untitled";
+    const content = lines.join("\n").replace(/^- /gm, "• ");
+    return { title, content };
+  });
+}
+
+function getCurrentTimeET() {
+  const options = {
+    timeZone: "America/New_York",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
   };
-  return new Intl.DateTimeFormat('en-US', options).format(new Date());
-};
+  return new Intl.DateTimeFormat("en-US", options).format(new Date());
+}
 
-// Serve the home page with the form
-app.get('/', (req, res) => {
-  const currentTimeET = getCurrentTimeET(); // Get current time in ET
-
+app.get("/", (req, res) => {
+  const currentTimeET = getCurrentTimeET();
   res.send(`
     <html>
       <head>
@@ -44,8 +51,8 @@ app.get('/', (req, res) => {
       </head>
       <body>
         <h2>Govplace PowerPoint Generator</h2>
-        <form method="POST" action="/download">
-          <textarea name="script" rows="12" cols="80" placeholder="Enter your script here (e.g., Slide 1: Title)"></textarea><br/><br/>
+        <form method="POST" action="/createSlideDeck">
+          <textarea name="script" rows="12" cols="80" placeholder="Paste your script here (e.g., Slide 1: Title)"></textarea><br/><br/>
           <button type="submit">Generate PowerPoint</button>
         </form>
 
@@ -61,84 +68,79 @@ app.get('/', (req, res) => {
   `);
 });
 
-// Handle form submission and generate the PowerPoint
-app.post('/download', (req, res) => {
-  const { script } = req.body;
+app.post("/createSlideDeck", async (req, res) => {
+  try {
+    const { script } = req.body;
+    if (!script) return res.status(400).json({ error: "Script text is required." });
 
-  if (!script || script.trim() === '') {
-    return res.status(400).send('No script provided');
-  }
+    const pptx = new pptxgenjs();
+    const slides = parseSlides(script);
 
-  const pptx = new PptxGenJS();
-
-  // Generate title slide
-  const titleSlide = pptx.addSlide();
-  titleSlide.background = { path: bg1Path };  // Set background for Title Slide
-  titleSlide.addText('Govplace Solution Overview', {
-    x: 0.5,
-    y: 0.35,
-    fontSize: 40,
-    fontFace: 'Arial',  // Use Arial as the default font
-    bold: true,
-    color: '17375e',
-    align: 'center'
-  });
-
-  // Process the input script directly
-  const slidesContent = script.split('\n\n'); // Assuming each slide is separated by two newlines
-  slidesContent.forEach((slideContent, idx) => {
-    const slide = pptx.addSlide();
-    slide.background = { path: idx === 0 ? bg1Path : bg2Path };  // Use bg1 for title slide, bg2 for others
-    const [title, ...content] = slideContent.split('\n');
-
-    slide.addText(title, {
-      x: 0.5,
-      y: 0.35,
-      fontSize: 30,
-      fontFace: 'Arial',  // Use Arial as the default font for titles
-      bold: true,
-      color: '17375e',
-      align: 'left'
-    });
-
-    // Add content (if any)
-    if (content.length > 0) {
-      slide.addText(content.join('\n'), {
-        x: 0.5,
-        y: 1.3,
-        fontSize: 18,
-        fontFace: 'Arial',  // Use Arial for content text
-        color: '333333',
-        align: 'left'
-      });
+    if (slides.length === 0) {
+      return res.status(400).json({ error: "No slides parsed from script." });
     }
 
-    // Add footer text to each slide
-    slide.addText('Govplace Confidential', {
-      x: 0,
-      y: 6.7,
-      w: '100%',
-      fontSize: 14,
-      fontFace: 'Arial',  // Use Arial for footer text
-      color: '888888',
-      align: 'center'
+    slides.forEach((slide, idx) => {
+      const pptSlide = pptx.addSlide();
+      pptSlide.background = { data: idx === 0 ? bg1 : bg2 };
+
+      // Title box styling from CSS
+      pptSlide.addText(slide.title, {
+        x: 1,
+        y: 0.4,
+        w: 8,
+        h: 1.3,
+        fontSize: 32,
+        bold: true,
+        color: "17375e",
+        fontFace: "Arial",
+      });
+
+      // Content box styling from CSS
+      if (slide.content) {
+        pptSlide.addText(slide.content, {
+          x: 1,
+          y: 1.8,
+          w: 8,
+          h: 5,
+          fontSize: 18,
+          lineSpacing: 24,
+          color: "333333",
+          fontFace: "Arial",
+          bullet: true,
+          wrap: true,
+          margin: 10,
+        });
+      }
+
+      // Footer text (small, centered, lighter color)
+      pptSlide.addText("Govplace Confidential", {
+        x: 0,
+        y: 6.7,
+        w: "100%",
+        fontSize: 14,
+        color: "888888",
+        align: "center",
+        fontFace: "Arial",
+      });
     });
-  });
 
-  // Increment the PowerPoint generation counter
-  pptxGeneratedToday++;
+    pptxGeneratedToday++;
 
-  // Generate the PowerPoint file
-  const fileName = `Govplace_SlideDeck_${Date.now()}.pptx`;
-  pptx.writeFile({ fileName }).then(() => {
-    res.download(path.join(__dirname, fileName));
-  }).catch((err) => {
-    console.error('Error generating PowerPoint:', err);
-    res.status(500).send("Error generating PowerPoint");
-  });
+    const filename = `Govplace_Slide_Deck_${Date.now()}.pptx`;
+    const filepath = path.join(__dirname, "outputs", filename);
+    await pptx.writeFile({ fileName: filepath });
+
+    const fileUrl = `${req.protocol}://${req.get("host")}/outputs/${filename}`;
+    res.json({ fileUrl });
+  } catch (error) {
+    console.error("Error generating PowerPoint:", error);
+    res.status(500).json({ error: "Failed to generate PowerPoint." });
+  }
 });
 
-// Start the server
-app.listen(3000, () => {
-  console.log('Server running on port 3000');
+app.use("/outputs", express.static(path.join(__dirname, "outputs")));
+
+app.listen(port, () => {
+  console.log(`Govplace PPTX Generator running on port ${port}`);
 });
