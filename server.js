@@ -4,26 +4,33 @@ const PptxGenJS = require('pptxgenjs');
 const fs = require('fs');
 const path = require('path');
 
-const LOGO_URL = 'https://www.govplace.com/wp-content/uploads/2019/07/GP-Logo-Facebook-04-01.png';
+const LOGO_PATH = './GP-Logo-Facebook-04-01.png';  // Local file in your repo root
 
 const app = express();
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 
-// Store server start time for "last updated"
 const serverStartTime = new Date();
-
-// Track daily usage counts keyed by date string
 let usageCount = {};
 function getTodayKey() {
   const d = new Date();
-  return d.toISOString().slice(0, 10); // YYYY-MM-DD
+  return d.toISOString().slice(0, 10);
 }
 
 app.get('/', (req, res) => {
   const todayKey = getTodayKey();
   const countToday = usageCount[todayKey] || 0;
-  const lastUpdated = serverStartTime.toLocaleString();
+
+  const lastUpdated = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/New_York',
+    year: 'numeric',
+    month: 'long',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: true
+  }).format(serverStartTime);
 
   res.send(`
     <html>
@@ -39,7 +46,7 @@ app.get('/', (req, res) => {
       <body>
         <h2>Govplace Slide Deck Generator</h2>
         <div class="info">
-          <p><strong>Server last started:</strong> ${lastUpdated}</p>
+          <p><strong>Server last started:</strong> ${lastUpdated} (ET)</p>
           <p><strong>Number of decks generated today:</strong> ${countToday}</p>
         </div>
         <form method="POST" action="/download" enctype="application/x-www-form-urlencoded">
@@ -58,7 +65,6 @@ app.post('/download', async (req, res) => {
     return res.send("No script provided! Please go back and enter your slide content.");
   }
 
-  // Increment usage counter for today
   const todayKey = getTodayKey();
   usageCount[todayKey] = (usageCount[todayKey] || 0) + 1;
 
@@ -66,7 +72,7 @@ app.post('/download', async (req, res) => {
   const slides = script.split(/\n\s*\n|Slide \d+:/i).filter(s => s.trim());
   slides.forEach((slideText, idx) => {
     const slide = pptx.addSlide();
-    slide.background = { fill: 'FFFFFF' }; // White
+    slide.background = { fill: 'FFFFFF' };
 
     const [title, ...body] = slideText.trim().split('\n');
     slide.addText(title || `Slide ${idx + 1}`, {
@@ -78,7 +84,7 @@ app.post('/download', async (req, res) => {
       fontFace: 'Arial'
     });
 
-    slide.addShape(pptx.ShapeType.rect, {
+    slide.addShape(PptxGenJS.ShapeType.rect, {
       x: 0.5,
       y: 1.1,
       w: 4.5,
@@ -99,7 +105,7 @@ app.post('/download', async (req, res) => {
       });
     }
 
-    slide.addImage({ url: LOGO_URL, x: 8.5, y: 0.2, w: 1.4, h: 0.7 });
+    slide.addImage({ path: LOGO_PATH, x: 8.5, y: 0.2, w: 1.4, h: 0.7 });
 
     slide.addText('Govplace Confidential', {
       x: 0,
