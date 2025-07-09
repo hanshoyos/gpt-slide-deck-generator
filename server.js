@@ -2,6 +2,7 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const PptxGenJS = require('pptxgenjs');
 const path = require('path');
+const fs = require('fs');
 
 const app = express();
 app.use(bodyParser.json());
@@ -12,19 +13,28 @@ const logoPath = './assets/GP-Logo-Facebook-04-01.png';
 const bg1Path = './assets/bg1.png'; // Background for title slide
 const bg2Path = './assets/bg2.png'; // Background for content slide
 
+// Fonts (PptxGenJS uses system fonts, but we'll reference the closest equivalent)
+const fontPath = './assets/fonts/f1.woff'; // Reference the font files (ensure fonts are system-installed)
+
+// Helper function to load outline (if necessary)
+const loadOutline = () => {
+  const outlinePath = './assets/Govplace_Deck_1752099237782.outline';
+  return fs.readFileSync(outlinePath, 'utf8').split('\n\n'); // Assuming slides are separated by blank lines
+};
+
 app.post('/download', (req, res) => {
   const pptx = new PptxGenJS();
 
-  // Example for Title Slide
+  // Generate title slide
   const titleSlide = pptx.addSlide();
-  titleSlide.background = { path: bg1Path };  // Set background for Title Slide
+  titleSlide.background = { path: bg1Path }; // Set background for Title Slide
   titleSlide.addText('Govplace Solution Overview', {
     x: 0.5,
     y: 0.35,
     fontSize: 40,
     bold: true,
     color: '17375e',
-    fontFace: 'Arial',
+    fontFace: 'Arial', // Use system font equivalent (as we can’t embed .woff fonts directly)
     align: 'center'
   });
   titleSlide.addImage({
@@ -35,16 +45,16 @@ app.post('/download', (req, res) => {
     h: 0.7
   });
 
-  // Example for Content Slide
+  // Generate content slide
   const contentSlide = pptx.addSlide();
-  contentSlide.background = { path: bg2Path };  // Set background for Content Slide
+  contentSlide.background = { path: bg2Path }; // Set background for Content Slide
   contentSlide.addText('Why Modernize Identity Now?', {
     x: 0.5,
     y: 0.35,
     fontSize: 30,
     bold: true,
     color: '17375e',
-    fontFace: 'Arial',
+    fontFace: 'Arial', // Use system font equivalent
     align: 'left'
   });
   contentSlide.addText('- Federal mandates (e.g., EO 14028, OMB M-22-09) require Zero Trust\n- Legacy identity systems slow down user access and increase risk\n- Cyber threats targeting identity are on the rise', {
@@ -56,7 +66,57 @@ app.post('/download', (req, res) => {
     align: 'left'
   });
 
-  // Generate the file
+  // Use outline content (or script input)
+  const slidesContent = loadOutline();
+  slidesContent.forEach((slideContent, idx) => {
+    const slide = pptx.addSlide();
+    slide.background = { path: idx === 0 ? bg1Path : bg2Path };  // Use bg1 for title slide, bg2 for others
+    const [title, ...content] = slideContent.split('\n');
+
+    slide.addText(title, {
+      x: 0.5,
+      y: 0.35,
+      fontSize: 30,
+      bold: true,
+      color: '17375e',
+      fontFace: 'Arial',
+      align: 'left'
+    });
+
+    // Add content (if any)
+    if (content.length > 0) {
+      slide.addText(content.join('\n'), {
+        x: 0.5,
+        y: 1.3,
+        fontSize: 18,
+        color: '333333',
+        fontFace: 'Arial',
+        align: 'left'
+      });
+    }
+
+    // Add logo to each slide
+    slide.addImage({
+      path: logoPath,
+      x: 8.5,
+      y: 0.2,
+      w: 1.4,
+      h: 0.7
+    });
+
+    // Add footer text
+    slide.addText('Govplace Confidential', {
+      x: 0,
+      y: 6.7,
+      w: '100%',
+      fontSize: 14,
+      color: '888888',
+      align: 'center',
+      fontFace: 'Arial'
+    });
+  });
+
+  // Generate the PowerPoint file
   const fileName = `Govplace_SlideDeck_${Date.now()}.pptx`;
   pptx.writeFile({ fileName }).then(() => {
     res.download(path.join(__dirname, fileName));
