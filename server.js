@@ -1,30 +1,49 @@
 // server.js
 const express = require('express');
 const bodyParser = require('body-parser');
-const PptxGenJS = require("pptxgenjs");
+const PptxGenJS = require('pptxgenjs');
 const fs = require('fs');
 const path = require('path');
-const { Client } = require('@microsoft/microsoft-graph-client');
-require('isomorphic-fetch');
 
 const app = express();
 app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: false }));
 
-app.post('/createSlideDeck', async (req, res) => {
-  const { script, access_token } = req.body;
-  if (!script || !access_token) {
-    return res.status(400).json({ error: 'Missing script or access_token.' });
+// Serve the home page with a simple web form
+app.get('/', (req, res) => {
+  res.send(`
+    <html>
+      <head>
+        <title>PPTX Generator</title>
+        <style>
+          body { font-family: Arial, sans-serif; margin: 40px; }
+          textarea { width: 95%; }
+          button { padding: 8px 20px; font-size: 18px; }
+        </style>
+      </head>
+      <body>
+        <h2>Paste your script below to generate a PowerPoint:</h2>
+        <form method="POST" action="/download" enctype="application/x-www-form-urlencoded">
+          <textarea name="script" rows="12" cols="80" placeholder="Slide 1: Welcome\nThis is the first slide.\n\nSlide 2: Agenda\nFirst point\nSecond point"></textarea><br/><br/>
+          <button type="submit">Generate PowerPoint</button>
+        </form>
+        <p>After clicking, your browser will download a .pptx file you can open in PowerPoint.</p>
+      </body>
+    </html>
+  `);
+});
+
+// Endpoint to accept script and return the generated .pptx file
+app.post('/download', async (req, res) => {
+  const { script } = req.body;
+  if (!script || !script.trim()) {
+    return res.send("No script provided! Please go back and enter your slide content.");
   }
 
-  // 1. Parse and generate the PowerPoint deck
   const pptx = new PptxGenJS();
 
-  // Split script into slides. Expecting format:
-  // Slide 1: Title
-  // Bullet 1
-  // Bullet 2
-  // (Blank lines or Slide X: to split)
-  const slides = script.split(/(?:\n\s*\n|Slide \d+:)/i).filter(s => s.trim());
+  // Split on blank lines or "Slide X:" labels (case-insensitive)
+  const slides = script.split(/\n\s*\n|Slide \d+:/i).filter(s => s.trim());
   slides.forEach((slideText, idx) => {
     const slide = pptx.addSlide();
     const [title, ...body] = slideText.trim().split('\n');
@@ -38,49 +57,15 @@ app.post('/createSlideDeck', async (req, res) => {
   const filePath = path.join(__dirname, fileName);
 
   try {
-    // 2. Write .pptx file locally
-    await pptx.writeFile({ fileName });
-
-    // 3. Upload to OneDrive via Microsoft Graph API
-    const graphClient = Client.init({
-      authProvider: (done) => done(null, access_token)
+    await pptx.writeFile({ fileName }); // Saves file locally
+    res.download(filePath, fileName, (err) => {
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath); // Clean up after sending
     });
-
-    const fileStream = fs.createReadStream(filePath);
-    // Create folder 'GeneratedSlides' if it doesn't exist
-    try {
-      await graphClient
-        .api('/me/drive/root:/GeneratedSlides')
-        .get();
-    } catch {
-      await graphClient
-        .api('/me/drive/root/children')
-        .post({ name: "GeneratedSlides", folder: {}, "@microsoft.graph.conflictBehavior": "rename" });
-    }
-
-    // Upload the pptx to /GeneratedSlides/ in user's OneDrive
-    const uploadRes = await graphClient
-      .api('/me/drive/root:/GeneratedSlides/' + fileName + ':/content')
-      .putStream(fileStream);
-
-    // 4. Get a shareable link
-    const linkRes = await graphClient
-      .api(`/me/drive/items/${uploadRes.id}/createLink`)
-      .post({ type: 'view' });
-
-    // Clean up local file
-    fs.unlinkSync(filePath);
-
-    // 5. Return the URL to client (ChatGPT Action)
-    return res.json({ fileUrl: linkRes.link.webUrl });
-
   } catch (err) {
-    console.error('Error creating or uploading PPTX:', err);
-    // Clean up local file if exists
-    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-    return res.status(500).json({ error: 'Failed to create or upload PowerPoint file.' });
+    console.error('Error generating PPTX:', err);
+    res.status(500).send("An error occurred while generating your PowerPoint file.");
   }
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Slide deck generator running on port ${PORT}`));
+app.listen(PORT, () => console.log(`PPTX Generator running on port ${PORT}`));
