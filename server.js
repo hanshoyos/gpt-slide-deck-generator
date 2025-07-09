@@ -4,6 +4,7 @@ const PptxGenJS = require('pptxgenjs');
 const path = require('path');
 const fs = require('fs');
 
+// Setup app and middleware
 const app = express();
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
@@ -13,13 +14,11 @@ const logoPath = './assets/GP-Logo-Facebook-04-01.png';
 const bg1Path = './assets/bg1.png'; // Background for title slide
 const bg2Path = './assets/bg2.png'; // Background for content slide
 
-// Helper function to load outline (if necessary)
-const loadOutline = () => {
-  const outlinePath = './assets/Govplace_Deck_1752099237782.outline';
-  return fs.readFileSync(outlinePath, 'utf8').split('\n\n'); // Assuming slides are separated by blank lines
-};
+// Track the number of PowerPoints generated today
+let pptxGeneratedToday = 0;
+const currentDate = new Date().toLocaleDateString();
 
-// Serve a form for user input
+// Serve the home page with the form
 app.get('/', (req, res) => {
   res.send(`
     <html>
@@ -37,14 +36,27 @@ app.get('/', (req, res) => {
           <textarea name="script" rows="12" cols="80" placeholder="Enter your script here (e.g., Slide 1: Title)"></textarea><br/><br/>
           <button type="submit">Generate PowerPoint</button>
         </form>
+
+        <hr>
+
+        <footer>
+          <p>Created by Hans Hoyos</p>
+          <p>Date: ${new Date().toLocaleString()}</p>
+          <p>PowerPoints generated today: ${pptxGeneratedToday}</p>
+        </footer>
       </body>
     </html>
   `);
 });
 
-// Handling form submission and generating PowerPoint
+// Handle form submission and generate the PowerPoint
 app.post('/download', (req, res) => {
   const { script } = req.body;
+
+  if (!script || script.trim() === '') {
+    return res.status(400).send('No script provided');
+  }
+
   const pptx = new PptxGenJS();
 
   // Generate title slide
@@ -67,29 +79,8 @@ app.post('/download', (req, res) => {
     h: 0.7
   });
 
-  // Example for Content Slide
-  const contentSlide = pptx.addSlide();
-  contentSlide.background = { path: bg2Path };  // Set background for Content Slide
-  contentSlide.addText('Why Modernize Identity Now?', {
-    x: 0.5,
-    y: 0.35,
-    fontSize: 30,
-    bold: true,
-    color: '17375e',
-    fontFace: 'Arial',
-    align: 'left'
-  });
-  contentSlide.addText('- Federal mandates (e.g., EO 14028, OMB M-22-09) require Zero Trust\n- Legacy identity systems slow down user access and increase risk\n- Cyber threats targeting identity are on the rise', {
-    x: 0.5,
-    y: 1.3,
-    fontSize: 18,
-    color: '333333',
-    fontFace: 'Arial',
-    align: 'left'
-  });
-
-  // Use outline content (or script input)
-  const slidesContent = loadOutline();
+  // Process the input script directly
+  const slidesContent = script.split('\n\n'); // Assuming each slide is separated by two newlines
   slidesContent.forEach((slideContent, idx) => {
     const slide = pptx.addSlide();
     slide.background = { path: idx === 0 ? bg1Path : bg2Path };  // Use bg1 for title slide, bg2 for others
@@ -126,7 +117,7 @@ app.post('/download', (req, res) => {
       h: 0.7
     });
 
-    // Add footer text
+    // Add footer text to each slide
     slide.addText('Govplace Confidential', {
       x: 0,
       y: 6.7,
@@ -138,15 +129,20 @@ app.post('/download', (req, res) => {
     });
   });
 
+  // Increment the PowerPoint generation counter
+  pptxGeneratedToday++;
+
   // Generate the PowerPoint file
   const fileName = `Govplace_SlideDeck_${Date.now()}.pptx`;
   pptx.writeFile({ fileName }).then(() => {
     res.download(path.join(__dirname, fileName));
   }).catch((err) => {
+    console.error('Error generating PowerPoint:', err);
     res.status(500).send("Error generating PowerPoint");
   });
 });
 
+// Start the server
 app.listen(3000, () => {
   console.log('Server running on port 3000');
 });
