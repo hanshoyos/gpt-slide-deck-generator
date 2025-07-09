@@ -1,7 +1,7 @@
 {
-  "name": "gpt-slide-deck-generator",
+  "name": "pptx-slide-deck-generator",
   "version": "1.0.0",
-  "description": "Backend service for generating PowerPoint slides from scripts using ChatGPT and Microsoft Graph.",
+  "description": "Standalone web app for generating PowerPoint files from text scripts.",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
@@ -9,9 +9,7 @@
   "dependencies": {
     "express": "^4.18.2",
     "body-parser": "^1.20.2",
-    "pptxgenjs": "^3.11.0",
-    "@microsoft/microsoft-graph-client": "^3.0.3",
-    "isomorphic-fetch": "^3.0.0"
+    "pptxgenjs": "^3.11.0"
   },
   "engines": {
     "node": ">=16"
