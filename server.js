@@ -4,14 +4,27 @@ const PptxGenJS = require('pptxgenjs');
 const fs = require('fs');
 const path = require('path');
 
-// Govplace logo
 const LOGO_URL = 'https://www.govplace.com/wp-content/uploads/2019/07/GP-Logo-Facebook-04-01.png';
 
 const app = express();
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 
+// Store server start time for "last updated"
+const serverStartTime = new Date();
+
+// Track daily usage counts keyed by date string
+let usageCount = {};
+function getTodayKey() {
+  const d = new Date();
+  return d.toISOString().slice(0, 10); // YYYY-MM-DD
+}
+
 app.get('/', (req, res) => {
+  const todayKey = getTodayKey();
+  const countToday = usageCount[todayKey] || 0;
+  const lastUpdated = serverStartTime.toLocaleString();
+
   res.send(`
     <html>
       <head>
@@ -20,10 +33,15 @@ app.get('/', (req, res) => {
           body { font-family: Arial, sans-serif; margin: 40px; }
           textarea { width: 95%; }
           button { padding: 8px 20px; font-size: 18px; }
+          .info { color: gray; margin-bottom: 15px; }
         </style>
       </head>
       <body>
         <h2>Govplace Slide Deck Generator</h2>
+        <div class="info">
+          <p><strong>Server last started:</strong> ${lastUpdated}</p>
+          <p><strong>Number of decks generated today:</strong> ${countToday}</p>
+        </div>
         <form method="POST" action="/download" enctype="application/x-www-form-urlencoded">
           <textarea name="script" rows="12" cols="80" placeholder="Slide 1: Title\nIntro line\n\nSlide 2: Headline\n- Bullet 1\n- Bullet 2"></textarea><br/><br/>
           <button type="submit">Generate PowerPoint</button>
@@ -40,38 +58,35 @@ app.post('/download', async (req, res) => {
     return res.send("No script provided! Please go back and enter your slide content.");
   }
 
-  const pptx = new PptxGenJS();
+  // Increment usage counter for today
+  const todayKey = getTodayKey();
+  usageCount[todayKey] = (usageCount[todayKey] || 0) + 1;
 
-  // Split on blank lines or "Slide X:" labels (case-insensitive)
+  const pptx = new PptxGenJS();
   const slides = script.split(/\n\s*\n|Slide \d+:/i).filter(s => s.trim());
   slides.forEach((slideText, idx) => {
     const slide = pptx.addSlide();
     slide.background = { fill: 'FFFFFF' }; // White
 
-    // Slide content
     const [title, ...body] = slideText.trim().split('\n');
-
-    // Title - top left, blue
     slide.addText(title || `Slide ${idx + 1}`, {
       x: 0.5,
       y: 0.35,
       fontSize: 30,
       bold: true,
-      color: '17375e', // Govplace navy blue
+      color: '17375e',
       fontFace: 'Arial'
     });
 
-    // Thin teal accent line under title
     slide.addShape(pptx.ShapeType.rect, {
       x: 0.5,
       y: 1.1,
       w: 4.5,
       h: 0.07,
-      fill: { color: '25d1db' }, // Govplace teal
+      fill: { color: '25d1db' },
       line: 'none'
     });
 
-    // Body text - below accent line
     if (body.length > 0) {
       slide.addText(body.join('\n'), {
         x: 0.5,
@@ -84,10 +99,8 @@ app.post('/download', async (req, res) => {
       });
     }
 
-    // Logo - top right
     slide.addImage({ url: LOGO_URL, x: 8.5, y: 0.2, w: 1.4, h: 0.7 });
 
-    // Footer - bottom center
     slide.addText('Govplace Confidential', {
       x: 0,
       y: 6.7,
@@ -103,9 +116,9 @@ app.post('/download', async (req, res) => {
   const filePath = path.join(__dirname, fileName);
 
   try {
-    await pptx.writeFile({ fileName }); // Saves file locally
+    await pptx.writeFile({ fileName });
     res.download(filePath, fileName, (err) => {
-      if (fs.existsSync(filePath)) fs.unlinkSync(filePath); // Clean up after sending
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
     });
   } catch (err) {
     console.error('Error generating PPTX:', err);
