@@ -10,8 +10,7 @@ A backend server for turning scripts into PowerPoint slides using ChatGPT Action
 "access_token": "Microsoft Graph OAuth token"
 }
 
-- Returns:
-- `{ "fileUrl": "https://..." }` (public link to your .pptx in OneDrive)
+- Returns:`{ "fileUrl": "https://..." }` (public link to your .pptx in OneDrive)
 
 ## Deploy
 
