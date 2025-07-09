@@ -8,9 +8,12 @@ const app = express();
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 
+// Serve static files (like CSS, images)
+app.use(express.static(path.join(__dirname, 'public')));
+
 // Path to assets (backgrounds)
-const bg1Path = './assets/bg1.png'; // Background for title slide and also contains the logo
-const bg2Path = './assets/bg2.png'; // Background for content slides and also contains the logo
+const bg1Path = './assets/bg1.png'; // Background for title slide
+const bg2Path = './assets/bg2.png'; // Background for content slides
 
 // Track the number of PowerPoints generated today
 let pptxGeneratedToday = 0;
@@ -37,11 +40,7 @@ app.get('/', (req, res) => {
     <html>
       <head>
         <title>Govplace PPTX Generator</title>
-        <style>
-          body { font-family: Arial, sans-serif; margin: 40px; }
-          textarea { width: 95%; }
-          button { padding: 8px 20px; font-size: 18px; }
-        </style>
+        <link rel="stylesheet" type="text/css" href="/main.css">
       </head>
       <body>
         <h2>Govplace PowerPoint Generator</h2>
@@ -74,14 +73,14 @@ app.post('/download', (req, res) => {
 
   // Generate title slide
   const titleSlide = pptx.addSlide();
-  titleSlide.background = { path: bg1Path };  // Set background for Title Slide (with the logo included)
+  titleSlide.background = { path: bg1Path };  // Set background for Title Slide
   titleSlide.addText('Govplace Solution Overview', {
     x: 0.5,
     y: 0.35,
     fontSize: 40,
+    fontFace: 'Arial',  // Use Arial as the default font
     bold: true,
     color: '17375e',
-    fontFace: 'Arial',
     align: 'center'
   });
 
@@ -96,9 +95,9 @@ app.post('/download', (req, res) => {
       x: 0.5,
       y: 0.35,
       fontSize: 30,
+      fontFace: 'Arial',  // Use Arial as the default font for titles
       bold: true,
       color: '17375e',
-      fontFace: 'Arial',
       align: 'left'
     });
 
@@ -108,8 +107,8 @@ app.post('/download', (req, res) => {
         x: 0.5,
         y: 1.3,
         fontSize: 18,
+        fontFace: 'Arial',  // Use Arial for content text
         color: '333333',
-        fontFace: 'Arial',
         align: 'left'
       });
     }
@@ -120,9 +119,9 @@ app.post('/download', (req, res) => {
       y: 6.7,
       w: '100%',
       fontSize: 14,
+      fontFace: 'Arial',  // Use Arial for footer text
       color: '888888',
-      align: 'center',
-      fontFace: 'Arial'
+      align: 'center'
     });
   });
 
