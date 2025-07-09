@@ -13,28 +13,50 @@ const logoPath = './assets/GP-Logo-Facebook-04-01.png';
 const bg1Path = './assets/bg1.png'; // Background for title slide
 const bg2Path = './assets/bg2.png'; // Background for content slide
 
-// Fonts (PptxGenJS uses system fonts, but we'll reference the closest equivalent)
-const fontPath = './assets/fonts/f1.woff'; // Reference the font files (ensure fonts are system-installed)
-
 // Helper function to load outline (if necessary)
 const loadOutline = () => {
   const outlinePath = './assets/Govplace_Deck_1752099237782.outline';
   return fs.readFileSync(outlinePath, 'utf8').split('\n\n'); // Assuming slides are separated by blank lines
 };
 
+// Serve a form for user input
+app.get('/', (req, res) => {
+  res.send(`
+    <html>
+      <head>
+        <title>Govplace PPTX Generator</title>
+        <style>
+          body { font-family: Arial, sans-serif; margin: 40px; }
+          textarea { width: 95%; }
+          button { padding: 8px 20px; font-size: 18px; }
+        </style>
+      </head>
+      <body>
+        <h2>Govplace PowerPoint Generator</h2>
+        <form method="POST" action="/download">
+          <textarea name="script" rows="12" cols="80" placeholder="Enter your script here (e.g., Slide 1: Title)"></textarea><br/><br/>
+          <button type="submit">Generate PowerPoint</button>
+        </form>
+      </body>
+    </html>
+  `);
+});
+
+// Handling form submission and generating PowerPoint
 app.post('/download', (req, res) => {
+  const { script } = req.body;
   const pptx = new PptxGenJS();
 
   // Generate title slide
   const titleSlide = pptx.addSlide();
-  titleSlide.background = { path: bg1Path }; // Set background for Title Slide
+  titleSlide.background = { path: bg1Path };  // Set background for Title Slide
   titleSlide.addText('Govplace Solution Overview', {
     x: 0.5,
     y: 0.35,
     fontSize: 40,
     bold: true,
     color: '17375e',
-    fontFace: 'Arial', // Use system font equivalent (as we can’t embed .woff fonts directly)
+    fontFace: 'Arial',
     align: 'center'
   });
   titleSlide.addImage({
@@ -45,16 +67,16 @@ app.post('/download', (req, res) => {
     h: 0.7
   });
 
-  // Generate content slide
+  // Example for Content Slide
   const contentSlide = pptx.addSlide();
-  contentSlide.background = { path: bg2Path }; // Set background for Content Slide
+  contentSlide.background = { path: bg2Path };  // Set background for Content Slide
   contentSlide.addText('Why Modernize Identity Now?', {
     x: 0.5,
     y: 0.35,
     fontSize: 30,
     bold: true,
     color: '17375e',
-    fontFace: 'Arial', // Use system font equivalent
+    fontFace: 'Arial',
     align: 'left'
   });
   contentSlide.addText('- Federal mandates (e.g., EO 14028, OMB M-22-09) require Zero Trust\n- Legacy identity systems slow down user access and increase risk\n- Cyber threats targeting identity are on the rise', {
