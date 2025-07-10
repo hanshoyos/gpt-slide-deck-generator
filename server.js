@@ -33,59 +33,80 @@ let pptxGeneratedToday = 0;
 const styles = {
   titleSlide: {
     title: {
-      x: 0.5,
-      y: 1.5,
-      w: 9,
-      h: 1.5,
+      x: 0.97,
+      y: 4.06,
+      w: 8.32,
+      h: 0.66,
       fontSize: 60,
-      color: "005670",   // Dark blue from "GOV"
+      color: "005670",
       bold: true,
       fontFace: "Arial",
-      align: "center"
+      align: "center",
+      valign: "middle",
+      margin: [0.05, 0.1, 0.05, 0.1],
+      wrap: true,
+      fit: true
     },
     subtitle: {
-      x: 0.5,
-      y: 3.5,
+      x: 0.63,
+      y: 4.72,
       w: 9,
-      h: 1,
+      h: 0.77,
       fontSize: 32,
-      color: "A9A9A9",   // Light gray from "PLACE"
+      color: "A9A9A9",
       fontFace: "Arial",
-      align: "center"
+      align: "center",
+      valign: "middle",
+      margin: [0.05, 0.1, 0.05, 0.1],
+      wrap: true,
+      fit: true
     }
   },
   contentSlide: {
     title: {
-      x: 0.5,
-      y: 0.5,
-      w: 9,
-      h: 1,
+      x: 0.7,
+      y: 0.39,
+      w: 3.5,
+      h: 2.17,
       fontSize: 40,
-      color: "005670",   // Dark blue
+      color: "005670",
       bold: true,
       fontFace: "Arial",
-      align: "left"
+      align: "left",
+      valign: "middle",
+      margin: [0.05, 0.1, 0.05, 0.1],
+      wrap: true,
+      fit: true
     },
     content: {
-      x: 0.5,
-      y: 1.5,
-      w: 9,
-      h: 4.5,
+      x: 4.59,
+      y: 0.39,
+      w: 5.03,
+      h: 4.73,
       fontSize: 24,
-      color: "333333",   // Dark gray for readability
+      color: "333333",
       fontFace: "Arial",
       bullet: { style: "circle", indent: 0.25 },
-      wrap: true
+      align: "left",
+      valign: "middle",
+      margin: [0.05, 0.1, 0.05, 0.1],
+      wrap: true,
+      fit: true
     }
   },
   footer: {
     x: 0,
-    y: 6.7,
-    w: "100%",
+    y: 5.48,
+    w: 10,
+    h: 0,
     fontSize: 12,
-    color: "A9A9A9",     // Light gray
+    color: "A9A9A9",
+    fontFace: "Arial",
     align: "center",
-    fontFace: "Arial"
+    valign: "middle",
+    margin: [0.05, 0.1, 0.05, 0.1],
+    wrap: true,
+    fit: true
   }
 };
 
