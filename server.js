@@ -15,10 +15,10 @@ app.use(express.static(path.join(__dirname, "public")));
 const outputsDir = path.join(__dirname, "outputs");
 if (!fs.existsSync(outputsDir)) fs.mkdirSync(outputsDir, { recursive: true });
 
-// Load background images (assuming they are in assets folder)
+// Load background images from assets folder
 const assetsDir = path.join(__dirname, "assets");
-const bg1 = fs.existsSync(path.join(assetsDir, "bg1.png")) ? fs.readFileSync(path.join(assetsDir, "bg1.png")) : Buffer.from("");
-const bg2 = fs.existsSync(path.join(assetsDir, "bg2.png")) ? fs.readFileSync(path.join(assetsDir, "bg2.png")) : Buffer.from("");
+const bg1 = fs.readFileSync(path.join(assetsDir, "bg1.png"));
+const bg2 = fs.readFileSync(path.join(assetsDir, "bg2.png"));
 
 // Track usage stats
 let pptxGeneratedToday = 0;
