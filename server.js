@@ -15,28 +15,75 @@ app.use(express.static(path.join(__dirname, "public")));
 const outputsDir = path.join(__dirname, "outputs");
 if (!fs.existsSync(outputsDir)) fs.mkdirSync(outputsDir, { recursive: true });
 
-// Load background images
+// Load background images (assuming they are in assets folder)
 const assetsDir = path.join(__dirname, "assets");
-const bg1 = fs.readFileSync(path.join(assetsDir, "bg1.png"));
-const bg2 = fs.readFileSync(path.join(assetsDir, "bg2.png"));
+const bg1 = fs.existsSync(path.join(assetsDir, "bg1.png")) ? fs.readFileSync(path.join(assetsDir, "bg1.png")) : Buffer.from("");
+const bg2 = fs.existsSync(path.join(assetsDir, "bg2.png")) ? fs.readFileSync(path.join(assetsDir, "bg2.png")) : Buffer.from("");
 
 // Track usage stats
 let pptxGeneratedToday = 0;
 
-// Styling based on Govplace CSS
+// Hardcoded styles for the Govplace template
 const styles = {
   titleSlide: {
-    title: { x: 0.5, y: 1.5, w: 9, h: 1.5, fontSize: 72, color: "FFFFFF", bold: true, fontFace: "Arial", align: "center" },
-    subtitle: { x: 0.5, y: 3.5, w: 9, h: 1, fontSize: 36, color: "FFFFFF", fontFace: "Arial", align: "center" },
+    title: {
+      x: 0.5,            // inches from left
+      y: 1.5,            // inches from top
+      w: 9,              // width in inches
+      h: 1.5,            // height in inches
+      fontSize: 72,      // large title font
+      color: "FFFFFF",   // white text
+      bold: true,
+      fontFace: "Arial", // sans-serif font
+      align: "center"
+    },
+    subtitle: {
+      x: 0.5,
+      y: 3.5,
+      w: 9,
+      h: 1,
+      fontSize: 36,      // medium subtitle font
+      color: "FFFFFF",   // white text
+      fontFace: "Arial",
+      align: "center"
+    }
   },
   contentSlide: {
-    title: { x: 0.5, y: 0.5, w: 9, h: 1, fontSize: 44, color: "17375E", bold: true, fontFace: "Arial", align: "left" },
-    content: { x: 0.5, y: 1.5, w: 9, h: 4.5, fontSize: 24, color: "333333", fontFace: "Arial", bullet: true, wrap: true },
+    title: {
+      x: 0.5,
+      y: 0.5,
+      w: 9,
+      h: 1,
+      fontSize: 44,      // prominent content title
+      color: "17375E",   // dark blue for contrast
+      bold: true,
+      fontFace: "Arial",
+      align: "left"
+    },
+    content: {
+      x: 0.5,
+      y: 1.5,
+      w: 9,
+      h: 4.5,
+      fontSize: 24,      // readable content font
+      color: "333333",   // dark gray for text
+      fontFace: "Arial",
+      bullet: true,      // bulleted list
+      wrap: true         // wrap long text
+    }
   },
-  footer: { x: 0, y: 6.7, w: "100%", fontSize: 14, color: "888888", align: "center", fontFace: "Arial" },
+  footer: {
+    x: 0,
+    y: 6.7,
+    w: "100%",
+    fontSize: 14,        // small footer font
+    color: "888888",     // light gray for subtlety
+    align: "center",
+    fontFace: "Arial"
+  }
 };
 
-// Get current time in ET
+// Get current time in Eastern Time
 function getCurrentTimeET() {
   return moment().tz("America/New_York").format("MM/DD/YYYY hh:mm:ss A");
 }
@@ -131,7 +178,7 @@ app.post("/createSlideDeck", async (req, res) => {
           pptSlide.addText(slide.content, styles.contentSlide.content);
         }
       }
-      // Add footer
+      // Add footer to every slide
       pptSlide.addText("Govplace Confidential", styles.footer);
     });
 
@@ -152,5 +199,5 @@ app.post("/createSlideDeck", async (req, res) => {
 app.use("/outputs", express.static(outputsDir));
 
 app.listen(port, () => {
-  console.log(`Govplace PPTX Generator running on port ${port}`);
+  console.log(`Govplace PPTX Generator running on port ${port} at ${getCurrentTimeET()}`);
 });
