@@ -1,6 +1,6 @@
 const express = require("express");
 const bodyParser = require("body-parser");
-const pptxgenjs = require("pptxgenjs");
+const PptxGenJS = require("pptxgenjs");
 const fs = require("fs");
 const path = require("path");
 const moment = require("moment-timezone");
@@ -15,26 +15,32 @@ app.use(express.static(path.join(__dirname, "public")));
 const outputsDir = path.join(__dirname, "outputs");
 if (!fs.existsSync(outputsDir)) fs.mkdirSync(outputsDir, { recursive: true });
 
-// Load background images from assets folder
+// Load background images
 const assetsDir = path.join(__dirname, "assets");
-const bg1 = fs.readFileSync(path.join(assetsDir, "bg1.png"));
-const bg2 = fs.readFileSync(path.join(assetsDir, "bg2.png"));
+const bg1Path = path.join(assetsDir, "bg1.png");
+const bg2Path = path.join(assetsDir, "bg2.png");
 
-// Track usage stats
+// Verify background images exist and are readable
+if (!fs.existsSync(bg1Path) || !fs.existsSync(bg2Path)) {
+  console.error("Background images (bg1.png or bg2.png) are missing in the assets folder.");
+  process.exit(1);
+}
+
+// Usage tracking
 let pptxGeneratedToday = 0;
 
-// Hardcoded styles for the Govplace template
+// Hardcoded styles inspired by Govplace logo
 const styles = {
   titleSlide: {
     title: {
-      x: 0.5,            // inches from left
-      y: 1.5,            // inches from top
-      w: 9,              // width in inches
-      h: 1.5,            // height in inches
-      fontSize: 72,      // large title font
-      color: "FFFFFF",   // white text
+      x: 0.5,
+      y: 1.5,
+      w: 9,
+      h: 1.5,
+      fontSize: 60,
+      color: "005670",   // Dark blue from "GOV"
       bold: true,
-      fontFace: "Arial", // sans-serif font
+      fontFace: "Arial",
       align: "center"
     },
     subtitle: {
@@ -42,8 +48,8 @@ const styles = {
       y: 3.5,
       w: 9,
       h: 1,
-      fontSize: 36,      // medium subtitle font
-      color: "FFFFFF",   // white text
+      fontSize: 32,
+      color: "A9A9A9",   // Light gray from "PLACE"
       fontFace: "Arial",
       align: "center"
     }
@@ -54,8 +60,8 @@ const styles = {
       y: 0.5,
       w: 9,
       h: 1,
-      fontSize: 44,      // prominent content title
-      color: "17375E",   // dark blue for contrast
+      fontSize: 40,
+      color: "005670",   // Dark blue
       bold: true,
       fontFace: "Arial",
       align: "left"
@@ -65,19 +71,19 @@ const styles = {
       y: 1.5,
       w: 9,
       h: 4.5,
-      fontSize: 24,      // readable content font
-      color: "333333",   // dark gray for text
+      fontSize: 24,
+      color: "333333",   // Dark gray for readability
       fontFace: "Arial",
-      bullet: true,      // bulleted list
-      wrap: true         // wrap long text
+      bullet: { style: "circle", indent: 0.25 },
+      wrap: true
     }
   },
   footer: {
     x: 0,
     y: 6.7,
     w: "100%",
-    fontSize: 14,        // small footer font
-    color: "888888",     // light gray for subtlety
+    fontSize: 12,
+    color: "A9A9A9",     // Light gray
     align: "center",
     fontFace: "Arial"
   }
@@ -96,7 +102,7 @@ function parseSlides(scriptText) {
     const slideText = match[1].trim();
     const lines = slideText.split(/\r?\n/).filter(Boolean);
     const title = lines.shift() || "Untitled";
-    const content = lines.join("\n").replace(/^- /gm, "• ");
+    const content = lines.join("\n").replace(/^- /gm, "");
     return { title, content };
   });
 }
@@ -108,7 +114,14 @@ app.get("/", (req, res) => {
     <html>
       <head>
         <title>Govplace PPTX Generator</title>
-        <link rel="stylesheet" type="text/css" href="/main.css">
+        <style>
+          body { font-family: Arial, sans-serif; margin: 20px; }
+          h2 { color: #005670; }
+          textarea { width: 100%; max-width: 600px; }
+          button { background: #005670; color: white; padding: 10px; border: none; cursor: pointer; }
+          button:hover { background: #003d50; }
+          footer { margin-top: 20px; color: #A9A9A9; font-size: 12px; }
+        </style>
       </head>
       <body>
         <h2>Govplace PowerPoint Generator</h2>
@@ -159,18 +172,18 @@ app.post("/createSlideDeck", async (req, res) => {
     const { script } = req.body;
     if (!script) return res.status(400).json({ error: "Script text is required." });
 
-    const pptx = new pptxgenjs();
+    const pptx = new PptxGenJS();
     const slides = parseSlides(script);
 
     slides.forEach((slide, idx) => {
       const pptSlide = pptx.addSlide();
       // Apply background based on slide type
-      pptSlide.background = { data: idx === 0 ? bg1 : bg2 };
+      pptSlide.background = { path: idx === 0 ? bg1Path : bg2Path };
 
       if (idx === 0) {
         // Title slide
         pptSlide.addText(slide.title, styles.titleSlide.title);
-        pptSlide.addText(slide.content, styles.titleSlide.subtitle);
+        if (slide.content) pptSlide.addText(slide.content, styles.titleSlide.subtitle);
       } else {
         // Content slide
         pptSlide.addText(slide.title, styles.contentSlide.title);
@@ -178,7 +191,7 @@ app.post("/createSlideDeck", async (req, res) => {
           pptSlide.addText(slide.content, styles.contentSlide.content);
         }
       }
-      // Add footer to every slide
+      // Add footer
       pptSlide.addText("Govplace Confidential", styles.footer);
     });
 
